@@ -8,16 +8,22 @@ class User(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password_hash = db.Column(db.String(128), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=True)  
+    _password_hash = db.Column(db.String(128), nullable=False)
+
     
-    def __init__(self, username, email, password):
-        self.username = username
-        self.email = email
-        self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+    @property
+    def password_hash(self):
+        raise AttributeError('Password is not readable')
     
-    def check_password(self, password):
-        return bcrypt.check_password_hash(self.password_hash, password)
+    @password_hash.setter
+    def password_hash(self, password):
+        self._password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
+    
+    def authenticate(self, password):
+        return bcrypt.check_password_hash(self._password_hash, password)
+    
+    
 
 
 # ================ STATUS ================ #
@@ -111,7 +117,7 @@ class UserSchema(ma.SQLAlchemyAutoSchema):
     class Meta:
         model = User
         load_instance = True
-        exclude = ('password_hash',)
+        fields = ('id', 'username', 'email') 
 
 user_schema = UserSchema()
 users_schema = UserSchema(many=True)

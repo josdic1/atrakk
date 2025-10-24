@@ -1,0 +1,4 @@
+id,track_id,link_type,link_url,created_at,updated_at
+1,1,YouTube,https://youtu.be/WYSr56224J0,2025-10-22 21:27:07,2025-10-22 21:27:07
+2,1,DistroKid,https://distrokid.com/dashboard/album/?albumuuid=48727D2F-5883-44E2-802C882BDE20FE93,2025-10-22 21:29:40,2025-10-22 21:29:40
+3,1,SongTrust,https://app.songtrust.com/songs/9457915,2025-10-22 21:30:16,2025-10-22 21:30:16

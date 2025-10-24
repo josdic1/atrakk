@@ -15,10 +15,13 @@ function TracksManager() {
   const [showArtistForm, setShowArtistForm] = useState(false);
 
   const [editingTrack, setEditingTrack] = useState(null);
-const [editForm, setEditForm] = useState({ title: '', artist_id: '' });
+  const [editForm, setEditForm] = useState({ title: '', artist_id: '', status_id: '' });
 
-const [newTag, setNewTag] = useState('');
-const [showTagForm, setShowTagForm] = useState(false);
+  const [newTag, setNewTag] = useState('');
+  const [showTagForm, setShowTagForm] = useState(false);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
 
 
   useEffect(() => {
@@ -29,21 +32,21 @@ const [showTagForm, setShowTagForm] = useState(false);
   }, []);
 
   const getLinkIcon = (linkType) => {
-  const type = linkType.toLowerCase();
-  if (type.includes('spotify') || type.includes('music') || type.includes('soundcloud')) {
-    return <Music2 size={16} />;
-  }
-  if (type.includes('youtube') || type.includes('video')) {
-    return <Video size={16} />;
-  }
-  if (type.includes('artwork') || type.includes('cover') || type.includes('image')) {
-    return <Image size={16} />;
-  }
-  if (type.includes('lyrics') || type.includes('doc')) {
-    return <FileText size={16} />;
-  }
-  return <Globe size={16} />;
-};
+    const type = linkType.toLowerCase();
+    if (type.includes('spotify') || type.includes('music') || type.includes('soundcloud')) {
+      return <Music2 size={16} />;
+    }
+    if (type.includes('youtube') || type.includes('video')) {
+      return <Video size={16} />;
+    }
+    if (type.includes('artwork') || type.includes('cover') || type.includes('image')) {
+      return <Image size={16} />;
+    }
+    if (type.includes('lyrics') || type.includes('doc')) {
+      return <FileText size={16} />;
+    }
+    return <Globe size={16} />;
+  };
 
   const fetchTracks = async () => {
     const res = await fetch('/api/tracks');
@@ -94,12 +97,14 @@ const [showTagForm, setShowTagForm] = useState(false);
   };
 
   const removeTagFromTrack = async (trackId, tagId) => {
-    const res = await fetch(`/api/tracks/${trackId}/tags/${tagId}`, {
-      method: 'DELETE'
-    });
-    
-    if (res.ok) {
-      fetchTracks();
+    if (confirm('Are you sure you want to remove this tag?')) {
+      const res = await fetch(`/api/tracks/${trackId}/tags/${tagId}`, {
+        method: 'DELETE'
+      });
+      
+      if (res.ok) {
+        fetchTracks();
+      }
     }
   };
 
@@ -118,12 +123,14 @@ const [showTagForm, setShowTagForm] = useState(false);
   };
 
   const removeLink = async (linkId) => {
-    const res = await fetch(`/api/links/${linkId}`, {
-      method: 'DELETE'
-    });
-    
-    if (res.ok) {
-      fetchTracks();
+    if (confirm('Are you sure you want to delete this link?')) {
+      const res = await fetch(`/api/links/${linkId}`, {
+        method: 'DELETE'
+      });
+      
+      if (res.ok) {
+        fetchTracks();
+      }
     }
   };
 
@@ -166,44 +173,52 @@ const [showTagForm, setShowTagForm] = useState(false);
     }
   };
 
-
   const startEditTrack = (track) => {
-  setEditingTrack(track.id);
-  setEditForm({ title: track.title, artist_id: track.artist_id });
-};
+    setEditingTrack(track.id);
+    setEditForm({ title: track.title, artist_id: track.artist_id, status_id: track.status_id });
+  };
 
-const updateTrack = async (trackId) => {
-  const res = await fetch(`/api/tracks/${trackId}`, {
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(editForm)
-  });
-  
-  if (res.ok) {
+  const updateTrack = async (trackId) => {
+    const res = await fetch(`/api/tracks/${trackId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(editForm)
+    });
+    
+    if (res.ok) {
+      setEditingTrack(null);
+      fetchTracks();
+    }
+  };
+
+  const cancelEdit = () => {
     setEditingTrack(null);
-    fetchTracks();
-  }
-};
+    setEditForm({ title: '', artist_id: '', status_id: '' });
+  };
 
-const cancelEdit = () => {
-  setEditingTrack(null);
-  setEditForm({ title: '', artist_id: '' });
-};
+  const createTag = async (e) => {
+    e.preventDefault();
+    const res = await fetch('/api/tags', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newTag })
+    });
+    
+    if (res.ok) {
+      setNewTag('');
+      setShowTagForm(false);
+      fetchTags();
+    }
+  };
 
-const createTag = async (e) => {
-  e.preventDefault();
-  const res = await fetch('/api/tags', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: newTag })
-  });
-  
-  if (res.ok) {
-    setNewTag('');
-    setShowTagForm(false);
-    fetchTags();
-  }
-};
+  const getFilteredTracks = () => {
+    return tracks.filter(track => {
+      const matchesSearch = track.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           track.artist?.name.toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === 'all' || track.status_id === parseInt(statusFilter);
+      return matchesSearch && matchesStatus;
+    });
+  };
 
   return (
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
@@ -270,62 +285,63 @@ const createTag = async (e) => {
         </button>
       )}
 
+      {/* Create Tag Form */}
       {showTagForm ? (
-  <div style={{
-    border: '2px solid #4a3f2a',
-    padding: '20px',
-    borderRadius: '8px',
-    background: '#2c2416',
-    marginBottom: '20px'
-  }}>
-    <h2>Create New Tag</h2>
-    <form onSubmit={createTag} style={{ display: 'flex', gap: '10px' }}>
-      <input
-        type="text"
-        placeholder="Tag Name (e.g., Lofi, Trap, R&B)"
-        value={newTag}
-        onChange={(e) => setNewTag(e.target.value)}
-        style={{ padding: '10px', fontSize: '16px', flex: 1 }}
-        required
-      />
-      <button type="submit" style={{
-        padding: '10px 20px',
-        fontSize: '16px',
-        background: '#4a3f2a',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer'
-      }}>
-        Create
-      </button>
-      <button type="button" onClick={() => setShowTagForm(false)} style={{
-        padding: '10px 20px',
-        fontSize: '16px',
-        background: '#666',
-        color: '#fff',
-        border: 'none',
-        borderRadius: '5px',
-        cursor: 'pointer'
-      }}>
-        Cancel
-      </button>
-    </form>
-  </div>
-) : (
-  <button onClick={() => setShowTagForm(true)} style={{
-    padding: '10px 20px',
-    fontSize: '16px',
-    background: '#4a3f2a',
-    color: '#fff',
-    border: 'none',
-    borderRadius: '5px',
-    cursor: 'pointer',
-    marginBottom: '20px'
-  }}>
-    + Create New Tag
-  </button>
-)}
+        <div style={{
+          border: '2px solid #4a3f2a',
+          padding: '20px',
+          borderRadius: '8px',
+          background: '#2c2416',
+          marginBottom: '20px'
+        }}>
+          <h2>Create New Tag</h2>
+          <form onSubmit={createTag} style={{ display: 'flex', gap: '10px' }}>
+            <input
+              type="text"
+              placeholder="Tag Name (e.g., Lofi, Trap, R&B)"
+              value={newTag}
+              onChange={(e) => setNewTag(e.target.value)}
+              style={{ padding: '10px', fontSize: '16px', flex: 1 }}
+              required
+            />
+            <button type="submit" style={{
+              padding: '10px 20px',
+              fontSize: '16px',
+              background: '#4a3f2a',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}>
+              Create
+            </button>
+            <button type="button" onClick={() => setShowTagForm(false)} style={{
+              padding: '10px 20px',
+              fontSize: '16px',
+              background: '#666',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer'
+            }}>
+              Cancel
+            </button>
+          </form>
+        </div>
+      ) : (
+        <button onClick={() => setShowTagForm(true)} style={{
+          padding: '10px 20px',
+          fontSize: '16px',
+          background: '#4a3f2a',
+          color: '#fff',
+          border: 'none',
+          borderRadius: '5px',
+          cursor: 'pointer',
+          marginBottom: '20px'
+        }}>
+          + Create New Tag
+        </button>
+      )}
 
       {/* Create Track Form */}
       <div style={{
@@ -384,13 +400,74 @@ const createTag = async (e) => {
         </form>
       </div>
 
+      {/* Search and Filters */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '10px', 
+        marginBottom: '20px',
+        alignItems: 'center',
+        flexWrap: 'wrap'
+      }}>
+        <input
+          type="text"
+          placeholder="🔍 Search tracks..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={{
+            padding: '10px 15px',
+            fontSize: '16px',
+            borderRadius: '8px',
+            border: '2px solid #4a3f2a',
+            background: '#1a1a1a',
+            color: '#fff',
+            flex: '1',
+            minWidth: '250px'
+          }}
+        />
+        
+        <button
+          onClick={() => setStatusFilter('all')}
+          style={{
+            padding: '10px 20px',
+            fontSize: '14px',
+            background: statusFilter === 'all' ? '#4a3f2a' : '#333',
+            color: '#fff',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: statusFilter === 'all' ? 'bold' : 'normal'
+          }}
+        >
+          All ({tracks.length})
+        </button>
+        
+        {statuses.map(status => (
+          <button
+            key={status.id}
+            onClick={() => setStatusFilter(status.id.toString())}
+            style={{
+              padding: '10px 20px',
+              fontSize: '14px',
+              background: statusFilter === status.id.toString() ? '#4a3f2a' : '#333',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: statusFilter === status.id.toString() ? 'bold' : 'normal'
+            }}
+          >
+            {status.name} ({tracks.filter(t => t.status_id === status.id).length})
+          </button>
+        ))}
+      </div>
+
       {/* Track List */}
       <div style={{ marginTop: '30px' }}>
-        <h2>All Tracks</h2>
-        {tracks.length === 0 ? (
-          <p>No tracks yet. Create one!</p>
+        <h2>All Tracks ({getFilteredTracks().length})</h2>
+        {getFilteredTracks().length === 0 ? (
+          <p>No tracks found. {searchQuery || statusFilter !== 'all' ? 'Try adjusting your filters.' : 'Create one!'}</p>
         ) : (
-          tracks.map(track => (
+          getFilteredTracks().map(track => (
             <div key={track.id} style={{
               border: '2px solid #333',
               padding: '15px',
@@ -401,84 +478,119 @@ const createTag = async (e) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
                 <div style={{ flex: 1 }}>
                   {editingTrack === track.id ? (
-  <div style={{ marginBottom: '10px' }}>
-    <input
-      type="text"
-      value={editForm.title}
-      onChange={(e) => setEditForm({...editForm, title: e.target.value})}
-      style={{ 
-        padding: '8px', 
-        fontSize: '18px', 
-        marginRight: '10px',
-        width: '300px'
-      }}
-    />
-    <select
-      value={editForm.artist_id}
-      onChange={(e) => setEditForm({...editForm, artist_id: e.target.value})}
-      style={{ 
-        padding: '8px', 
-        fontSize: '16px',
-        marginRight: '10px'
-      }}
-    >
-      {artists.map(artist => (
-        <option key={artist.id} value={artist.id}>{artist.name}</option>
-      ))}
-    </select>
-    <button
-      onClick={() => updateTrack(track.id)}
-      style={{
-        background: '#4a3f2a',
-        color: '#fff',
-        border: 'none',
-        padding: '8px 15px',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        marginRight: '5px'
-      }}
-    >
-      Save
-    </button>
-    <button
-      onClick={cancelEdit}
-      style={{
-        background: '#666',
-        color: '#fff',
-        border: 'none',
-        padding: '8px 15px',
-        borderRadius: '4px',
-        cursor: 'pointer'
-      }}
-    >
-      Cancel
-    </button>
-  </div>
-) : (
-  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-    <h3>{track.title}</h3>
-    <button
-      onClick={() => startEditTrack(track)}
-      style={{
-        background: '#4a3f2a',
-        color: '#fff',
-        border: 'none',
-        padding: '5px 10px',
-        borderRadius: '4px',
-        cursor: 'pointer',
-        fontSize: '12px'
-      }}
-    >
-      Edit
-    </button>
-  </div>
-)}
-<p>Artist: {track.artist?.name}</p>
+                    <div style={{ marginBottom: '10px' }}>
+                      <input
+                        type="text"
+                        value={editForm.title}
+                        onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                        style={{ 
+                          padding: '8px', 
+                          fontSize: '18px', 
+                          marginRight: '10px',
+                          width: '300px'
+                        }}
+                      />
+                      <select
+                        value={editForm.artist_id}
+                        onChange={(e) => setEditForm({...editForm, artist_id: e.target.value})}
+                        style={{ 
+                          padding: '8px', 
+                          fontSize: '16px',
+                          marginRight: '10px'
+                        }}
+                      >
+                        {artists.map(artist => (
+                          <option key={artist.id} value={artist.id}>{artist.name}</option>
+                        ))}
+                      </select>
+                      <select
+                        value={editForm.status_id}
+                        onChange={(e) => setEditForm({...editForm, status_id: e.target.value})}
+                        style={{ 
+                          padding: '8px', 
+                          fontSize: '16px',
+                          marginRight: '10px'
+                        }}
+                      >
+                        {statuses.map(status => (
+                          <option key={status.id} value={status.id}>{status.name}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={() => updateTrack(track.id)}
+                        style={{
+                          background: '#4a3f2a',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '8px 15px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          marginRight: '5px'
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        onClick={cancelEdit}
+                        style={{
+                          background: '#666',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '8px 15px',
+                          borderRadius: '4px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <h3>{track.title}</h3>
+                      <button
+                        onClick={() => startEditTrack(track)}
+                        style={{
+                          background: '#4a3f2a',
+                          color: '#fff',
+                          border: 'none',
+                          padding: '5px 10px',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '12px'
+                        }}
+                      >
+                        Edit
+                      </button>
+                    </div>
+                  )}
+                  <p>Artist: {track.artist?.name}</p>
+                  
+                  {/* Status Dropdown */}
+                  <div style={{ marginTop: '10px' }}>
+                    <strong>Status: </strong>
+                    <select
+                      value={track.status_id}
+                      onChange={(e) => updateTrackStatus(track.id, e.target.value)}
+                      style={{
+                        padding: '5px 10px',
+                        background: '#4a3f2a',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        marginLeft: '5px'
+                      }}
+                    >
+                      {statuses.map(status => (
+                        <option key={status.id} value={status.id}>{status.name}</option>
+                      ))}
+                    </select>
+                  </div>
                   
                   {/* Tags */}
                   <div style={{ marginTop: '10px' }}>
                     <strong>Tags: </strong>
-                    {track.tags?.map(tag => (
+                    {track.tags?.sort((a, b) => a.name.localeCompare(b.name)).map(tag => (
                       <span 
                         key={tag.id} 
                         onClick={() => removeTagFromTrack(track.id, tag.id)}
@@ -516,61 +628,65 @@ const createTag = async (e) => {
                       }}
                     >
                       <option value="">+ Add Tag</option>
-                      {tags.filter(tag => !track.tags?.find(t => t.id === tag.id)).map(tag => (
-                        <option key={tag.id} value={tag.id}>{tag.name}</option>
-                      ))}
+                      {tags
+                        .filter(tag => !track.tags?.find(t => t.id === tag.id))
+                        .sort((a, b) => a.name.localeCompare(b.name))
+                        .map(tag => (
+                          <option key={tag.id} value={tag.id}>{tag.name}</option>
+                        ))
+                      }
                     </select>
                   </div>
 
                   {/* Links */}
                   <div style={{ marginTop: '10px' }}>
-  <strong>Links: </strong>
-  {track.links?.map(link => (
-    <div key={link.id} style={{ 
-      marginLeft: '10px',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      marginTop: '5px',
-      padding: '6px 10px',
-      background: '#1a1a1a',
-      borderRadius: '6px',
-      width: 'fit-content'
-    }}>
-      {getLinkIcon(link.link_type)}
-      <span style={{ fontWeight: 'bold', minWidth: '80px' }}>{link.link_type}</span>
-      <a 
-        href={link.link_url} 
-        target="_blank" 
-        rel="noopener noreferrer" 
-        style={{ 
-          color: '#4a9eff',
-          textDecoration: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '4px',
-          fontSize: '14px'
-        }}
-      >
-        View <ExternalLink size={12} />
-      </a>
-      <button 
-        onClick={() => removeLink(link.id)}
-        style={{
-          background: '#8b0000',
-          color: '#fff',
-          border: 'none',
-          padding: '4px 8px',
-          borderRadius: '4px',
-          cursor: 'pointer',
-          fontSize: '12px',
-          marginLeft: '8px'
-        }}
-      >
-        ✕
-      </button>
-    </div>
-  ))}
+                    <strong>Links: </strong>
+                    {track.links?.sort((a, b) => a.link_type.localeCompare(b.link_type)).map(link => (
+                      <div key={link.id} style={{ 
+                        marginLeft: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginTop: '5px',
+                        padding: '6px 10px',
+                        background: '#1a1a1a',
+                        borderRadius: '6px',
+                        width: 'fit-content'
+                      }}>
+                        {getLinkIcon(link.link_type)}
+                        <span style={{ fontWeight: 'bold', minWidth: '80px' }}>{link.link_type}</span>
+                        <a 
+                          href={link.link_url} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          style={{ 
+                            color: '#4a9eff',
+                            textDecoration: 'none',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            fontSize: '14px'
+                          }}
+                        >
+                          View <ExternalLink size={12} />
+                        </a>
+                        <button 
+                          onClick={() => removeLink(link.id)}
+                          style={{
+                            background: '#8b0000',
+                            color: '#fff',
+                            border: 'none',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '12px',
+                            marginLeft: '8px'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ))}
                     
                     {showLinkForm === track.id ? (
                       <div style={{ marginTop: '10px', marginLeft: '10px' }}>

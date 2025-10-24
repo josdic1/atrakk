@@ -17,40 +17,58 @@ cors.init_app(app, supports_credentials=True, origins=['http://localhost:5555'])
 
 # ================ USER ================ #
 
+
 # REGISTER #
 @app.route('/register', methods=['POST'])
 def register():
-    data = request.get_json()
-    username = data.get('username')
-    email = data.get('email')
-    password = data.get('password')
-
-    # Check if user already exists
-    user = User.query.filter_by(username=username).first()
-    if user:
-        return jsonify({'message': 'User already exists'}), 400
-
-    # Create new user
-    new_user = User(username=username, email=email, password=password)
-    db.session.add(new_user)
-    db.session.commit()
-
-    session['user_id'] = new_user.id
-
-    return user_schema.jsonify(new_user), 201
+    try:
+        data = request.json
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return jsonify({'error': 'Username and password required'}), 400
+        
+        if User.query.filter_by(username=username).first():
+            return jsonify({'error': 'Username already exists'}), 400
+        
+        user = User(username=username)
+        user.password_hash = password
+        
+        db.session.add(user)
+        db.session.commit()
+        
+        # Store user data in session
+        session['user_id'] = user.id
+        session['username'] = user.username
+        
+        return jsonify({
+            'message': 'User created successfully',
+            'user': {'id': user.id, 'username': user.username}
+        }), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Registration error: {str(e)}")  # This will show in terminal
+        return jsonify({'error': f'Registration failed: {str(e)}'}), 500
 
 # LOGIN #
 @app.route('/login', methods=['POST'])
-def login():    
-    data = request.get_json()
+def login():
+    data = request.json
     username = data.get('username')
     password = data.get('password')
-
+    
     user = User.query.filter_by(username=username).first()
-    if user and user.check_password(password):
+    
+    if user and user.authenticate(password):
         session['user_id'] = user.id
-        return user_schema.jsonify(user), 200
-    return jsonify({'message': 'Invalid username or password'}), 401
+        session['username'] = user.username  # Add this line
+        return jsonify({
+            'message': 'Logged in successfully',
+            'user': {'id': user.id, 'username': user.username}
+        }), 200
+    
+    return jsonify({'error': 'Invalid credentials'}), 401
 
 # LOGOUT #
 @app.route('/logout', methods=['POST'])
@@ -59,13 +77,17 @@ def logout():
     return jsonify({'message': 'Logged out'}), 200  
 
 # CHECK SESSION #
-@app.route('/check_session', methods=['GET'])
+@app.route('/check-session')
 def check_session():
     user_id = session.get('user_id')
     if user_id:
         user = User.query.get(user_id)
-        return user_schema.jsonify(user), 200
-    return jsonify({'message': 'Not logged in'}), 401
+        if user:
+            return jsonify({
+                'logged_in': True,
+                'user': {'id': user.id, 'username': user.username}
+            })
+    return jsonify({'logged_in': False, 'user': {}})
 
 
 # ================ ARTISTS ================ #
@@ -109,7 +131,7 @@ def delete_artist(artist_id):
 # GET ALL TRACKS #
 @app.route('/tracks', methods=['GET'])
 def get_all_tracks():
-    tracks = Track.query.all()
+    tracks = Track.query.order_by(Track.updated_at.desc()).all()
     return tracks_schema.jsonify(tracks), 200
 
 # GET TRACK BY ID #
@@ -304,30 +326,49 @@ def reset_database():
 # SEED DATABASE #
 @app.route('/command/seed', methods=['POST'])
 def seed_database():
-    # Create statuses
-    demo = Status(name='Demo')
-    in_progress = Status(name='In Progress')
-    completed = Status(name='Completed')
-    released = Status(name='Released')
+    import os
+    import subprocess
     
-    db.session.add_all([demo, in_progress, completed, released])
+    # Check if seed.py exists
+    seed_file = os.path.join(os.path.dirname(__file__), 'seed.py')
     
-    # Create sample artist
-    artist = Artist(name='Beautifuls Dream')
-    db.session.add(artist)
+    if not os.path.exists(seed_file):
+        return jsonify({
+            'error': '❌ seed.py not found',
+            'message': 'seed.py does not exist in the backend folder'
+        }), 404
     
-    # Create sample tags
-    pop = Tag(name='Pop')
-    electronic = Tag(name='Electronic')
-    remix = Tag(name='Remix')
-    acoustic = Tag(name='Acoustic')
-    
-    db.session.add_all([pop, electronic, remix, acoustic])
-    
-    db.session.commit()
-    
-    return jsonify({'message': 'Database seeded with statuses, artist, and tags!'}), 200
-
+    try:
+        # Run seed.py
+        result = subprocess.run(
+            ['python', 'seed.py'],
+            cwd=os.path.dirname(__file__),
+            capture_output=True,
+            text=True,
+            timeout=30
+        )
+        
+        if result.returncode == 0:
+            return jsonify({
+                'message': '✅ Database seeded successfully!',
+                'output': result.stdout
+            }), 200
+        else:
+            return jsonify({
+                'error': '❌ Seed script failed',
+                'message': result.stderr
+            }), 500
+            
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'error': '❌ Seed timeout',
+            'message': 'Seeding took too long (>30s)'
+        }), 500
+    except Exception as e:
+        return jsonify({
+            'error': '❌ Seed error',
+            'message': str(e)
+        }), 500
 
 # CONTEXT RUN #
 with app.app_context():
