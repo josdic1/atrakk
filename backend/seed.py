@@ -163,6 +163,8 @@ def seed_database():
         db.session.add_all([lettuce_guess, teeth_meet_brush, all_the_chefs, cupcake_trampoline_the_other_one, apple_parade, army_crocs, baby_pancake, colorphant, how_many_muffins, boys_dont_cry, bold, wrecking_kind, dempling, just_like_that, chain_link_fence, only_hope, i_already_did, storm_city, how_many_muffins, call_it_a_night, back_to_c])
         db.session.commit()
 
+                
+        
         # Track-Tag Relationships
         print('Adding tags to tracks...')
         lettuce_guess.tags.append(hip_hop)
@@ -227,7 +229,6 @@ def seed_database():
         storm_city.tags.append(ai)
         how_many_muffins.tags.append(hip_hop)
         how_many_muffins.tags.append(edm)
-        how_many_muffins.tags.append(ai)
         how_many_muffins.tags.append(emo)
         how_many_muffins.tags.append(synth_pop)
         call_it_a_night.tags.append(edm)
