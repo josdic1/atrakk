@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Music, Plus, Tag, Link as LinkIcon, Trash2, ExternalLink, Music2, Video, Image, FileText, Globe } from 'lucide-react';
 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5555';
+
 function TracksManager() {
   const [tracks, setTracks] = useState([]);
   const [artists, setArtists] = useState([]);
@@ -49,32 +51,32 @@ function TracksManager() {
   };
 
   const fetchTracks = async () => {
-    const res = await fetch('/api/tracks');
+    const res = await fetch(`${API_BASE_URL}/tracks`);
     const data = await res.json();
     setTracks(data);
   };
 
   const fetchArtists = async () => {
-    const res = await fetch('/api/artists');
+    const res = await fetch(`${API_BASE_URL}/artists`);
     const data = await res.json();
     setArtists(data);
   };
 
-  const fetchStatuses = async () => {
-    const res = await fetch('/api/command/data');
-    const data = await res.json();
-    setStatuses(data.statuses);
-  };
+ const fetchStatuses = async () => {
+  const res = await fetch(`${API_BASE_URL}/command/data`);
+  const data = await res.json();
+  setStatuses(data.statuses);
+};
 
   const fetchTags = async () => {
-    const res = await fetch('/api/tags');
+    const res = await fetch(`${API_BASE_URL}/tags`);
     const data = await res.json();
     setTags(data);
   };
 
   const createTrack = async (e) => {
     e.preventDefault();
-    const res = await fetch('/api/tracks', {
+    const res = await fetch(`${API_BASE_URL}/tracks`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newTrack)
@@ -87,7 +89,7 @@ function TracksManager() {
   };
 
   const addTagToTrack = async (trackId, tagId) => {
-    const res = await fetch(`/api/tracks/${trackId}/tags/${tagId}`, {
+    const res = await fetch(`${API_BASE_URL}/tracks/${trackId}/tags/${tagId}`, {
       method: 'POST'
     });
     
@@ -98,7 +100,7 @@ function TracksManager() {
 
   const removeTagFromTrack = async (trackId, tagId) => {
     if (confirm('Are you sure you want to remove this tag?')) {
-      const res = await fetch(`/api/tracks/${trackId}/tags/${tagId}`, {
+      const res = await fetch(`${API_BASE_URL}/tracks/${trackId}/tags/${tagId}`, {
         method: 'DELETE'
       });
       
@@ -109,7 +111,7 @@ function TracksManager() {
   };
 
   const addLinkToTrack = async (trackId) => {
-    const res = await fetch(`/api/tracks/${trackId}/links`, {
+    const res = await fetch(`${API_BASE_URL}/tracks/${trackId}/links`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newLink)
@@ -124,7 +126,7 @@ function TracksManager() {
 
   const removeLink = async (linkId) => {
     if (confirm('Are you sure you want to delete this link?')) {
-      const res = await fetch(`/api/links/${linkId}`, {
+      const res = await fetch(`${API_BASE_URL}/links/${linkId}`, {
         method: 'DELETE'
       });
       
@@ -136,7 +138,7 @@ function TracksManager() {
 
   const createArtist = async (e) => {
     e.preventDefault();
-    const res = await fetch('/api/artists', {
+    const res = await fetch(`${API_BASE_URL}/artists`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newArtist })
@@ -150,7 +152,7 @@ function TracksManager() {
   };
 
   const updateTrackStatus = async (trackId, statusId) => {
-    const res = await fetch(`/api/tracks/${trackId}`, {
+    const res = await fetch(`${API_BASE_URL}/tracks/${trackId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status_id: statusId })
@@ -163,7 +165,7 @@ function TracksManager() {
 
   const deleteTrack = async (trackId) => {
     if (confirm('Are you sure you want to delete this track?')) {
-      const res = await fetch(`/api/tracks/${trackId}`, {
+      const res = await fetch(`${API_BASE_URL}/tracks/${trackId}`, {
         method: 'DELETE'
       });
       
@@ -179,7 +181,7 @@ function TracksManager() {
   };
 
   const updateTrack = async (trackId) => {
-    const res = await fetch(`/api/tracks/${trackId}`, {
+    const res = await fetch(`${API_BASE_URL}/tracks/${trackId}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(editForm)
@@ -198,7 +200,7 @@ function TracksManager() {
 
   const createTag = async (e) => {
     e.preventDefault();
-    const res = await fetch('/api/tags', {
+    const res = await fetch(`${API_BASE_URL}/tags`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: newTag })
