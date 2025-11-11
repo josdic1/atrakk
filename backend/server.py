@@ -1,20 +1,29 @@
 from flask import Flask, request, jsonify, session, render_template
 from extensions import db, bcrypt, ma, cors
 from models import User, user_schema, users_schema, Status, status_schema, statuses_schema, Artist, artist_schema, artists_schema, Track, track_schema, tracks_schema, Link, link_schema, links_schema, Tag, tag_schema, tags_schema
+import os
 
 app = Flask(__name__)
 
 # Configuration
-app.config['SECRET_KEY'] = 'your-secret-key-change-this'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'your-secret-key-change-this')
+
+# Handle Render's PostgreSQL URL format
+database_url = os.environ.get('DATABASE_URL', 'sqlite:///app.db')
+if database_url.startswith('postgres://'):
+    database_url = database_url.replace('postgres://', 'postgresql://', 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize Flask extensions
 db.init_app(app)
 bcrypt.init_app(app)
 ma.init_app(app)
-cors.init_app(app, supports_credentials=True, origins=['http://localhost:5555'])
 
+# Update CORS for production - allow multiple origins
+allowed_origins = os.environ.get('CORS_ORIGINS', 'http://localhost:5555').split(',')
+cors.init_app(app, supports_credentials=True, origins=allowed_origins)
 # ================ USER ================ #
 
 
