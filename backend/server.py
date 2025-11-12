@@ -22,7 +22,7 @@ bcrypt.init_app(app)
 ma.init_app(app)
 
 # Update CORS for production - allow multiple origins
-allowed_origins = os.environ.get('CORS_ORIGINS', 'http://localhost:5555').split(',')
+allowed_origins = os.environ.get('CORS_ORIGINS', 'http://localhost:5173,http://localhost:5555').split(',')
 cors.init_app(app, supports_credentials=True, origins=allowed_origins)
 # ================ USER ================ #
 
